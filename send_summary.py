@@ -3,47 +3,56 @@ from openai import OpenAI
 import requests
 import datetime
 
+print("🔍 Starting SMM Summary...")
+
+# Check secrets
+api_key = os.getenv("NVIDIA_API_KEY")
+tg_token = os.getenv("TELEGRAM_BOT_TOKEN")
+tg_chat = os.getenv("TELEGRAM_CHAT_ID")
+
+print(f"NVIDIA Key present: {'Yes' if api_key and api_key.startswith('nvapi-') else 'No / Invalid'}")
+print(f"Telegram Token present: {'Yes' if tg_token else 'No'}")
+print(f"Telegram Chat ID present: {'Yes' if tg_chat else 'No'}")
+
+if not api_key or not tg_token or not tg_chat:
+    print("❌ Missing secrets!")
+    exit(1)
+
 client = OpenAI(
     base_url="https://integrate.api.nvidia.com/v1",
-    api_key=os.getenv("NVIDIA_API_KEY")
+    api_key=api_key
 )
 
-def send_telegram(message: str):
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    if not token or not chat_id:
-        print("❌ Telegram credentials missing")
-        return False
-    
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    response = requests.post(url, json={
-        "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "Markdown"
-    })
-    print(f"Telegram status: {response.status_code}")
-    return response.ok
-
-# Generate summary
 try:
-    print("🤖 Generating SMM summary...")
+    print("🤖 Calling NVIDIA NIM...")
     response = client.chat.completions.create(
         model="meta/llama-3.1-70b-instruct",
         messages=[
             {"role": "system", "content": "You are an Expert Social Media Manager."},
-            {"role": "user", "content": f"Today is {datetime.date.today()}. Send a short, actionable daily/weekly SMM tip or quick strategy summary."}
+            {"role": "user", "content": f"Today is {datetime.date.today()}. Give a short, valuable SMM tip or quick strategy insight."}
         ],
-        max_tokens=800,
+        max_tokens=600,
         temperature=0.7
     )
     
-    summary = response.choices[0].message.content
-    full_message = f"🧠 **Expert SMM Daily Update** ({datetime.date.today()})\n\n{summary}"
+    summary = response.choices[0].message.content.strip()
+    print("✅ Got response from NVIDIA")
     
-    if send_telegram(full_message):
-        print("✅ Summary sent to Telegram successfully!")
+    full_msg = f"🧠 **Expert SMM Update** — {datetime.date.today()}\n\n{summary}"
+    
+    # Send to Telegram
+    url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
+    tg_response = requests.post(url, json={
+        "chat_id": tg_chat,
+        "text": full_msg,
+        "parse_mode": "Markdown"
+    })
+    
+    print(f"Telegram Status: {tg_response.status_code}")
+    if tg_response.ok:
+        print("✅ Successfully sent to Telegram!")
     else:
-        print("❌ Failed to send to Telegram")
+        print(f"❌ Telegram failed: {tg_response.text}")
         
 except Exception as e:
-    print(f"❌ Error: {e}")
+    print(f"❌ Error: {type(e).__name__} - {str(e)}")
