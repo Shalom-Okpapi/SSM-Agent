@@ -2,7 +2,7 @@ name: Expert SMM Agent
 
 on:
   schedule:
-    - cron: '0 8 * * 1'   # Weekly Monday summary
+    - cron: '0 9 * * 1'   # Monday 9 AM WAT (UTC+1)
   workflow_dispatch:
 
 jobs:
@@ -19,9 +19,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Send Weekly Summary
+      - name: Run SMM Summary
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python -m smm_telegram_bot  # Or create a separate summary script if preferred
+        run: python send_summary.py
