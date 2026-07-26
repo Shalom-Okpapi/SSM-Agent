@@ -83,15 +83,15 @@ def tg_api(method: str, payload: dict = None) -> dict:
     resp = request_with_retry("POST", url, json=payload or {})
     return resp.json()
 
-def send_message(chat_id: str, text: str, parse_mode: str = "Markdown") -> bool:
+def send_message(chat_id: str, text: str) -> bool:
     chat_id = str(chat_id)
-    # Hard Markdown safety: never send unpaired special chars
-    safe_text = text.replace("_", "\\_").replace("*", "\\*").replace("`", "\\`")
+    # Safer Markdown: escape common problem characters
+    safe = text.replace("\\", "\\\\").replace("_", "\\_").replace("*", "\\*").replace("`", "\\`")
     try:
         result = tg_api("sendMessage", {
             "chat_id": chat_id,
-            "text": safe_text,
-            "parse_mode": parse_mode,
+            "text": safe,
+            "parse_mode": "Markdown",
             "disable_web_page_preview": True
         })
         return result.get("ok", False)
@@ -120,14 +120,18 @@ def is_authorized(chat_id: str, users: dict) -> bool:
     return str(chat_id) in [str(x) for x in users.get("authorized", [])] or is_admin(chat_id)
 
 def get_command_list() -> str:
-    """Single source of truth for all command descriptions."""
+    """Single source of truth for all commands."""
     return (
-        "• /plan — Full weekly content strategy + post ideas\n"
-        "• /idea [platform] [niche] — High-engagement post idea + caption\n"
-        "• /caption [topic] — Ready-to-post captions\n"
-        "• /tip — Quick daily growth tip\n"
-        "• /trend — Current social media trends\n"
-        "• /help — Show this list again"
+        "• /plan — Full weekly content strategy\n"
+        "• /idea [platform] [topic] — High-performing post idea + caption\n"
+        "• /hooks [topic] — 8–10 strong hooks\n"
+        "• /caption [topic] — 3 ready-to-post captions\n"
+        "• /calendar [niche] — 7-day content calendar\n"
+        "• /series [topic] — Content series ideas\n"
+        "• /tip — Sharp daily growth tip\n"
+        "• /trend — Current platform trends + how to use them\n"
+        "• /audit [niche] — Quick strategy audit\n"
+        "• /help — Show this list"
     )
 
 # ===================== COMMAND HANDLERS =====================
@@ -139,7 +143,6 @@ def cmd_start(chat_id: str, text: str, state: dict, users: dict):
         source = text.split(maxsplit=1)[1][:40]
 
     if not is_authorized(chat_id, users):
-        # Track pending inquiry
         users["pending"][str(chat_id)] = {
             "name": name,
             "source": source,
@@ -153,70 +156,139 @@ def cmd_start(chat_id: str, text: str, state: dict, users: dict):
             state["notified_admin"].append(str(chat_id))
             save_state(state)
 
-        # Free preview once
         if str(chat_id) not in state["free_preview_used"]:
-            send_message(chat_id, "Here is a free quick tip while you explore:")
-            tip = generate("Give one short, high-value social media growth tip.")
+            send_message(chat_id, "Here’s a free high-value tip while you explore:")
+            tip = generate("Give one sharp, non-generic social media growth tip that most people overlook.")
             send_message(chat_id, tip)
             state["free_preview_used"].append(str(chat_id))
             save_state(state)
 
         msg = (
-            f"Welcome to {BOT_NAME}!\n\n"
-            "I am your Expert Social Media Manager.\n\n"
+            f"Welcome to {BOT_NAME}.\n\n"
+            "I act as your senior Social Media Manager.\n"
+            "I focus on real growth, strong hooks, and content that actually performs.\n\n"
             "Available commands:\n"
             f"{get_command_list()}\n\n"
-            "This is currently free. Enjoy!"
+            "Currently free. Start with /plan or /idea."
         )
         send_message(chat_id, msg)
         return
 
     msg = (
-        f"Welcome back, {name}!\n\n"
-        f"Here's what I can do:\n"
+        f"Welcome back, {name}.\n\n"
+        f"Here’s what I can do for you:\n"
         f"{get_command_list()}"
     )
     send_message(chat_id, msg)
 
-def cmd_plan(chat_id: str):
-    send_message(chat_id, "Generating your weekly SMM plan...")
-    result = generate(
-        "Create a complete weekly social media content strategy. "
-        "Include themes, 5-7 strong post ideas with hooks, and sample captions. "
-        "Make it practical and growth-focused."
+def cmd_plan(chat_id: str, args: List[str]):
+    niche = " ".join(args) if args else "general personal brand / creator"
+    send_message(chat_id, "Building your weekly strategy...")
+    prompt = (
+        f"Create a strong 7-day social media content strategy for: {niche}.\n\n"
+        "Structure your answer like this:\n"
+        "1. Overall Strategy Angle (1–2 sentences)\n"
+        "2. Content Pillars (3–4 pillars)\n"
+        "3. Daily Plan (Day 1 to Day 7) — for each day give:\n"
+        "   - Format + Platform suggestion\n"
+        "   - Strong Hook\n"
+        "   - Short caption direction\n"
+        "4. One growth lever to focus on this week"
     )
+    result = generate(prompt, max_tokens=1600)
     send_message(chat_id, result)
 
 def cmd_idea(chat_id: str, args: List[str]):
-    query = " ".join(args) if args else "Instagram tech / growth audience"
-    send_message(chat_id, "Crafting a strong post idea...")
-    result = generate(
-        f"Give one high-engagement post idea with a full ready-to-use caption for: {query}"
+    query = " ".join(args) if args else "Instagram personal brand"
+    send_message(chat_id, "Creating a high-potential post idea...")
+    prompt = (
+        f"Give me one high-performing post idea for: {query}.\n\n"
+        "Include:\n"
+        "- Platform + Format\n"
+        "- Strong Hook (first line)\n"
+        "- Full ready-to-use Caption\n"
+        "- Why this has potential to perform\n"
+        "- Suggested CTA"
     )
+    result = generate(prompt)
+    send_message(chat_id, result)
+
+def cmd_hooks(chat_id: str, args: List[str]):
+    topic = " ".join(args) if args else "personal growth"
+    send_message(chat_id, "Generating strong hooks...")
+    prompt = (
+        f"Write 9 powerful hooks for content about: {topic}.\n"
+        "Make them scroll-stopping, specific, and varied in style "
+        "(curiosity, bold statement, question, story, contrarian)."
+    )
+    result = generate(prompt)
     send_message(chat_id, result)
 
 def cmd_caption(chat_id: str, args: List[str]):
-    topic = " ".join(args) if args else "motivational content"
+    topic = " ".join(args) if args else "mindset"
     send_message(chat_id, "Writing captions...")
-    result = generate(
-        f"Write 3 strong, ready-to-post captions for the topic: {topic}. "
-        "Include emojis and a clear CTA where appropriate."
+    prompt = (
+        f"Write 3 complete, ready-to-post captions about: {topic}.\n"
+        "Each caption should have a strong opening, good flow, and a clear CTA. "
+        "Add light emoji use where it helps."
     )
+    result = generate(prompt)
+    send_message(chat_id, result)
+
+def cmd_calendar(chat_id: str, args: List[str]):
+    niche = " ".join(args) if args else "creator / personal brand"
+    send_message(chat_id, "Building 7-day content calendar...")
+    prompt = (
+        f"Create a practical 7-day content calendar for: {niche}.\n"
+        "For each day give:\n"
+        "- Content type + platform\n"
+        "- Main angle / topic\n"
+        "- Hook direction\n"
+        "Keep it realistic and high-signal."
+    )
+    result = generate(prompt, max_tokens=1400)
+    send_message(chat_id, result)
+
+def cmd_series(chat_id: str, args: List[str]):
+    topic = " ".join(args) if args else "building in public"
+    send_message(chat_id, "Designing content series...")
+    prompt = (
+        f"Propose 3 strong content series ideas around: {topic}.\n"
+        "For each series include:\n"
+        "- Series name\n"
+        "- 5 episode / post titles\n"
+        "- Why this series can build audience"
+    )
+    result = generate(prompt)
     send_message(chat_id, result)
 
 def cmd_tip(chat_id: str):
-    result = generate("Give one short, actionable daily social media growth tip.")
+    result = generate(
+        "Give one sharp, non-obvious social media growth tip that most people ignore. "
+        "Make it specific and actionable."
+    )
     send_message(chat_id, result)
 
 def cmd_trend(chat_id: str):
     result = generate(
-        "What are the most relevant social media trends right now "
-        "(Instagram, TikTok, LinkedIn, X)? Give practical ways a creator or brand can use them."
+        "What are the most useful current trends on Instagram, TikTok, LinkedIn and X right now? "
+        "For each, give a practical way a creator or brand can use it this week."
     )
     send_message(chat_id, result)
 
+def cmd_audit(chat_id: str, args: List[str]):
+    niche = " ".join(args) if args else "personal brand"
+    send_message(chat_id, "Running quick strategy audit...")
+    prompt = (
+        f"Act as a senior SMM doing a quick audit for someone in: {niche}.\n"
+        "Point out 5 common mistakes people in this space make, "
+        "and give a clear better approach for each."
+    )
+    result = generate(prompt)
+    send_message(chat_id, result)
+
 def cmd_help(chat_id: str):
-    send_message(chat_id, f"Commands:\n\n{get_command_list()}")
+    send_message(chat_id, f"Here’s everything I can do:\n\n{get_command_list()}")
 
 # ===================== ADMIN =====================
 
@@ -232,7 +304,7 @@ def cmd_authorize(chat_id: str, args: List[str], users: dict, state: dict):
         users["pending"].pop(target, None)
         save_users(users)
         send_message(chat_id, f"Authorized {target}")
-        send_message(target, "You have been authorized. Enjoy full access!")
+        send_message(target, "You now have full access. Enjoy.")
     else:
         send_message(chat_id, f"{target} is already authorized.")
 
@@ -265,8 +337,10 @@ def process_message(msg: dict, state: dict, users: dict):
     cmd = parts[0].lower().split("@")[0]
     args = parts[1:]
 
-    # Cooldown only for network commands
-    network_cmds = {"/plan", "/idea", "/caption", "/tip", "/trend"}
+    network_cmds = {
+        "/plan", "/idea", "/hooks", "/caption",
+        "/calendar", "/series", "/tip", "/trend", "/audit"
+    }
     if cmd in network_cmds:
         last = state["last_request_at"].get(chat_id, 0)
         if ts() - last < COOLDOWN_SECONDS:
@@ -277,21 +351,29 @@ def process_message(msg: dict, state: dict, users: dict):
     if cmd in ("/start", "/help"):
         cmd_start(chat_id, text, state, users)
     elif cmd == "/plan":
-        cmd_plan(chat_id)
+        cmd_plan(chat_id, args)
     elif cmd == "/idea":
         cmd_idea(chat_id, args)
+    elif cmd == "/hooks":
+        cmd_hooks(chat_id, args)
     elif cmd == "/caption":
         cmd_caption(chat_id, args)
+    elif cmd == "/calendar":
+        cmd_calendar(chat_id, args)
+    elif cmd == "/series":
+        cmd_series(chat_id, args)
     elif cmd == "/tip":
         cmd_tip(chat_id)
     elif cmd == "/trend":
         cmd_trend(chat_id)
+    elif cmd == "/audit":
+        cmd_audit(chat_id, args)
     elif cmd == "/authorize":
         cmd_authorize(chat_id, args, users, state)
     elif cmd == "/users":
         cmd_users(chat_id, users, state)
     else:
-        send_message(chat_id, "Unknown command. Use /help")
+        send_message(chat_id, "Unknown command. Use /help to see everything I can do.")
 
 def main():
     if not TELEGRAM_BOT_TOKEN:
