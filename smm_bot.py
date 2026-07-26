@@ -120,20 +120,33 @@ def is_authorized(chat_id: str, users: dict) -> bool:
     return str(chat_id) in [str(x) for x in users.get("authorized", [])] or is_admin(chat_id)
 
 def get_command_list() -> str:
-    """Single source of truth for all commands."""
+    """Single source of truth for all commands with examples."""
     return (
-        "• /plan — Full weekly content strategy\n"
+        "• /plan [niche] — Full weekly content strategy\n"
+        "  Example: /plan fitness coach\n"
+        "  Example: /plan personal brand\n\n"
         "• /idea [platform] [topic] — High-performing post idea + caption\n"
+        "  Example: /idea instagram fitness\n"
+        "  Example: /idea linkedin saas\n\n"
         "• /hooks [topic] — 8–10 strong hooks\n"
+        "  Example: /hooks fitness\n"
+        "  Example: /hooks productivity\n\n"
         "• /caption [topic] — 3 ready-to-post captions\n"
+        "  Example: /caption mindset\n"
+        "  Example: /caption skincare\n\n"
         "• /calendar [niche] — 7-day content calendar\n"
+        "  Example: /calendar fitness\n"
+        "  Example: /calendar e-commerce\n\n"
         "• /series [topic] — Content series ideas\n"
-        "• /tip — Sharp daily growth tip\n"
-        "• /trend — Current platform trends + how to use them\n"
+        "  Example: /series building in public\n"
+        "  Example: /series client results\n\n"
+        "• /tip — Sharp daily growth tip\n\n"
+        "• /trend — Current platform trends + how to use them\n\n"
         "• /audit [niche] — Quick strategy audit\n"
-        "• /help — Show this list"
+        "  Example: /audit personal brand\n"
+        "  Example: /audit real estate\n\n"
+        "• /help — Show this list again"
     )
-
 # ===================== COMMAND HANDLERS =====================
 
 def cmd_start(chat_id: str, text: str, state: dict, users: dict):
@@ -167,7 +180,7 @@ def cmd_start(chat_id: str, text: str, state: dict, users: dict):
             f"Welcome to {BOT_NAME}.\n\n"
             "I act as your senior Social Media Manager.\n"
             "I focus on real growth, strong hooks, and content that actually performs.\n\n"
-            "Available commands:\n"
+            "Available commands:\n\n"
             f"{get_command_list()}\n\n"
             "Currently free. Start with /plan or /idea."
         )
@@ -176,7 +189,7 @@ def cmd_start(chat_id: str, text: str, state: dict, users: dict):
 
     msg = (
         f"Welcome back, {name}.\n\n"
-        f"Here’s what I can do for you:\n"
+        f"Here’s what I can do:\n\n"
         f"{get_command_list()}"
     )
     send_message(chat_id, msg)
