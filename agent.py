@@ -8,16 +8,27 @@ client = OpenAI(
     timeout=60.0
 )
 
-SYSTEM_PROMPT = (
-    "You are an Expert Social Media Manager with 10+ years of real experience. "
-    "You are growth-focused, data-driven, creative and practical. "
-    "Always give clear, actionable advice with strong hooks and captions when relevant. "
-    "Be concise but complete."
-)
+SYSTEM_PROMPT = """You are a senior Social Media Manager with 10+ years of experience growing accounts from zero to large audiences.
 
-def generate(prompt: str, max_tokens: int = 1100) -> str:
+Your style:
+- Extremely practical and specific
+- Growth-focused (reach, engagement, saves, shares, follows)
+- Platform-aware (Instagram, TikTok, LinkedIn, X, YouTube)
+- You always give ready-to-use content, not vague advice
+- You structure your answers clearly with headings and bullet points
+- You sound confident, direct, and experienced — never generic or fluffy
+
+When asked for ideas, always include:
+- Strong hook
+- Full caption (or script)
+- Why it works
+- Suggested format / CTA
+
+Never give mid or average answers. Aim for content that actually has a chance to perform well."""
+
+def generate(prompt: str, max_tokens: int = 1400) -> str:
     if not NVIDIA_API_KEY or not NVIDIA_API_KEY.startswith("nvapi-"):
-        return "NVIDIA API key is missing or invalid. Please check the secret."
+        return "NVIDIA API key is missing or invalid."
 
     try:
         response = client.chat.completions.create(
@@ -26,26 +37,19 @@ def generate(prompt: str, max_tokens: int = 1100) -> str:
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {
                     "role": "user",
-                    "content": f"Today is {now_wat().strftime('%Y-%m-%d')}.\n\n{prompt}"
+                    "content": f"Date: {now_wat().strftime('%Y-%m-%d')}\n\n{prompt}"
                 }
             ],
-            temperature=0.7,
+            temperature=0.75,
             max_tokens=max_tokens
         )
         return response.choices[0].message.content.strip()
 
     except AuthenticationError:
-        return "Authentication failed. Your NVIDIA API key is invalid or expired."
-
+        return "Authentication failed. Check your NVIDIA API key."
     except BadRequestError as e:
-        # This is the most common error – surface the real message
-        err = str(e)
-        if "model" in err.lower():
-            return f"Bad request – model issue. Current model: {NVIDIA_MODEL}\nError: {err}"
-        return f"Bad request from NVIDIA: {err}"
-
+        return f"Bad request from NVIDIA: {str(e)}"
     except APIConnectionError:
-        return "Could not connect to NVIDIA. Try again in a moment."
-
+        return "Could not connect to NVIDIA. Please try again shortly."
     except Exception as e:
         return f"Unexpected error: {type(e).__name__}: {str(e)}"
