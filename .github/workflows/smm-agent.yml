@@ -31,7 +31,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-          NVIDIA_MODEL: ${{ secrets.NVIDIA_MODEL }}
+          NVIDIA_MODEL: ${{ secrets.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct' }}
           DM_POLL_WINDOW_SECONDS: "240"
         run: python smm_bot.py
 
