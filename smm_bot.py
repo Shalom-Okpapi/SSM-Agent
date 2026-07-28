@@ -34,7 +34,7 @@ def _default_state() -> dict:
         "free_preview_used": [],
         "notified_admin": [],
         "known_names": {},
-        "profiles": {}          # chat_id -> brand profile
+        "profiles": {}
     }
 
 def load_state() -> dict:
@@ -132,10 +132,19 @@ def profile_summary(profile: dict) -> str:
     if profile.get("goal"):
         parts.append(f"Main goal: {profile['goal']}")
     if profile.get("challenge"):
-        parts.append(f"Current challenge: {profile['challenge']}")
-    if profile.get("platforms"):
-        parts.append(f"Platforms: {profile['platforms']}")
-    return " | ".join(parts) if parts else "Profile started but incomplete."
+        parts.append(f"Biggest challenge: {profile['challenge']}")
+    return "\n".join(parts) if parts else "Profile started but incomplete."
+
+def build_context(chat_id: str, state: dict) -> str:
+    profile = get_profile(chat_id, state)
+    if not profile:
+        return "No brand profile available yet."
+    return (
+        f"Brand name: {profile.get('brand_name', 'Not set')}\n"
+        f"Niche: {profile.get('niche', 'Not set')}\n"
+        f"Main goal: {profile.get('goal', 'Not set')}\n"
+        f"Biggest challenge: {profile.get('challenge', 'Not set')}"
+    )
 
 def is_admin(chat_id: str) -> bool:
     return str(chat_id) == str(ADMIN_CHAT_ID)
@@ -169,28 +178,27 @@ def cmd_start(chat_id: str, text: str, state: dict, users: dict):
     if not profile.get("brand_name"):
         send_message(chat_id,
             f"Hey {name}. I'm your senior Social Media Manager.\n\n"
-            "Before I start giving you content, I want to understand your brand properly "
-            "so everything I create is actually useful for you.\n\n"
-            "Let's start simple — what is your brand or project name?"
+            "I just need 4 quick answers so I can give you personalized advice instead of generic content.\n\n"
+            "1/4 — What is your brand or project name?"
         )
         update_profile(chat_id, state, stage="awaiting_brand_name")
         return
 
     send_message(chat_id,
         f"Welcome back, {name}.\n\n"
-        f"I already know a bit about your brand:\n{profile_summary(profile)}\n\n"
+        f"Here's what I know about your brand:\n{profile_summary(profile)}\n\n"
         f"{get_command_list()}"
     )
 
 def cmd_setup(chat_id: str, state: dict):
     send_message(chat_id,
-        "Let's set up your brand profile properly.\n\n"
-        "What is your brand or project name?"
+        "Let's quickly set up your brand profile (only 4 questions).\n\n"
+        "1/4 — What is your brand or project name?"
     )
     update_profile(chat_id, state, stage="awaiting_brand_name")
 
 def handle_conversation(chat_id: str, text: str, state: dict):
-    """Handle free-text replies when the bot is collecting information."""
+    """Strictly 4 questions only."""
     profile = get_profile(chat_id, state)
     stage = profile.get("stage")
 
@@ -198,7 +206,7 @@ def handle_conversation(chat_id: str, text: str, state: dict):
         update_profile(chat_id, state, brand_name=text, stage="awaiting_niche")
         send_message(chat_id,
             f"Got it — {text}.\n\n"
-            "What niche or industry are you in? (e.g. fitness, personal brand, real estate, fashion, SaaS...)"
+            "2/4 — What niche or industry are you in?"
         )
         return True
 
@@ -206,8 +214,7 @@ def handle_conversation(chat_id: str, text: str, state: dict):
         update_profile(chat_id, state, niche=text, stage="awaiting_goal")
         send_message(chat_id,
             "Understood.\n\n"
-            "What is your main goal right now with social media?\n"
-            "(e.g. get more clients, grow followers, build authority, sell a product...)"
+            "3/4 — What is your main goal with social media right now?"
         )
         return True
 
@@ -215,43 +222,23 @@ def handle_conversation(chat_id: str, text: str, state: dict):
         update_profile(chat_id, state, goal=text, stage="awaiting_challenge")
         send_message(chat_id,
             "Clear.\n\n"
-            "What is the biggest challenge you're facing right now with content or growth?"
+            "4/4 — What is the biggest challenge you're currently facing with content or growth?"
         )
         return True
 
     if stage == "awaiting_challenge":
-        update_profile(chat_id, state, challenge=text, stage="awaiting_platforms")
-        send_message(chat_id,
-            "Thanks for sharing that.\n\n"
-            "Which platforms are you mainly focusing on? (Instagram, TikTok, LinkedIn, X, YouTube...)"
-        )
-        return True
-
-    if stage == "awaiting_platforms":
-        update_profile(chat_id, state, platforms=text, stage="complete")
+        update_profile(chat_id, state, challenge=text, stage="complete")
         profile = get_profile(chat_id, state)
         send_message(chat_id,
-            "Perfect. I now have a solid picture of your brand.\n\n"
+            "Perfect. I now have everything I need.\n\n"
             f"{profile_summary(profile)}\n\n"
-            "I can now create much more personalized strategies and content for you.\n\n"
+            "I can create personalized strategies and content for you from now on.\n\n"
             "What would you like to work on first?\n"
-            "You can say /plan, /idea, /hooks, or just tell me what you need."
+            "You can use /plan, /idea, /hooks, or just tell me what you need."
         )
         return True
 
     return False
-
-def build_context(chat_id: str, state: dict) -> str:
-    profile = get_profile(chat_id, state)
-    if not profile:
-        return "No brand profile available yet."
-    return (
-        f"Brand name: {profile.get('brand_name', 'Not set')}\n"
-        f"Niche: {profile.get('niche', 'Not set')}\n"
-        f"Main goal: {profile.get('goal', 'Not set')}\n"
-        f"Biggest challenge: {profile.get('challenge', 'Not set')}\n"
-        f"Platforms: {profile.get('platforms', 'Not set')}"
-    )
 
 def cmd_plan(chat_id: str, state: dict):
     context = build_context(chat_id, state)
