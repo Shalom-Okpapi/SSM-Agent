@@ -169,6 +169,7 @@ def get_command_list() -> str:
         "/trend — Current useful trends\n"
         "/audit — Honest strategy audit\n"
         "/profile — Show what I know about your brand\n"
+        "/reset — Clear your brand profile and start over\n"
         "/help — Show this list"
     )
 
@@ -197,6 +198,20 @@ def cmd_start(chat_id: str, text: str, state: dict, users: dict):
 def cmd_setup(chat_id: str, state: dict):
     send_message(chat_id,
         "Let's quickly set up your brand profile (only 5 questions).\n\n"
+        "1/5 — What is your brand or project name?\n"
+        "Example: GlowSkin, FitWithAda, TechLaunch, etc."
+    )
+    update_profile(chat_id, state, stage="awaiting_brand_name")
+
+def cmd_reset(chat_id: str, state: dict):
+    cid = str(chat_id)
+    if cid in state.get("profiles", {}):
+        del state["profiles"][cid]
+        save_state(state)
+
+    send_message(chat_id,
+        "Your brand profile has been reset.\n\n"
+        "Let's start fresh.\n\n"
         "1/5 — What is your brand or project name?\n"
         "Example: GlowSkin, FitWithAda, TechLaunch, etc."
     )
@@ -249,7 +264,6 @@ def handle_conversation(chat_id: str, text: str, state: dict):
             )
             return True
 
-        # On question 1 or already completed
         send_message(chat_id, "There's nothing to go back to right now.")
         return True
 
@@ -486,6 +500,8 @@ def process_message(msg: dict, state: dict, users: dict):
         cmd_start(chat_id, text, state, users)
     elif cmd == "/setup":
         cmd_setup(chat_id, state)
+    elif cmd == "/reset":
+        cmd_reset(chat_id, state)
     elif cmd == "/plan":
         cmd_plan(chat_id, state)
     elif cmd == "/idea":
