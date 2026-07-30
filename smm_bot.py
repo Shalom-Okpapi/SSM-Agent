@@ -183,8 +183,7 @@ def cmd_start(chat_id: str, text: str, state: dict, users: dict):
             f"Hey {name}. I'm your senior Social Media Manager.\n\n"
             "I just need 5 quick answers so I can give you personalized advice instead of generic content.\n\n"
             "1/5 — What is your brand or project name?\n"
-            "Example: GlowSkin, FitWithAda, TechLaunch, etc.\n\n"
-            "You can type /back anytime to go to the previous question."
+            "Example: GlowSkin, FitWithAda, TechLaunch, etc."
         )
         update_profile(chat_id, state, stage="awaiting_brand_name")
         return
@@ -199,18 +198,17 @@ def cmd_setup(chat_id: str, state: dict):
     send_message(chat_id,
         "Let's quickly set up your brand profile (only 5 questions).\n\n"
         "1/5 — What is your brand or project name?\n"
-        "Example: GlowSkin, FitWithAda, TechLaunch, etc.\n\n"
-        "You can type /back anytime to go to the previous question."
+        "Example: GlowSkin, FitWithAda, TechLaunch, etc."
     )
     update_profile(chat_id, state, stage="awaiting_brand_name")
 
 def handle_conversation(chat_id: str, text: str, state: dict):
-    """Exactly 5 questions + /back support."""
+    """Exactly 5 questions. /back only available from question 2 onwards."""
     profile = get_profile(chat_id, state)
     stage = profile.get("stage")
     text_clean = text.strip().lower()
 
-    # Handle /back
+    # Handle /back (only works from question 2+)
     if text_clean == "/back":
         if stage == "awaiting_niche":
             update_profile(chat_id, state, stage="awaiting_brand_name")
@@ -226,7 +224,8 @@ def handle_conversation(chat_id: str, text: str, state: dict):
             send_message(chat_id,
                 "Okay, going back.\n\n"
                 "2/5 — What niche or industry are you in?\n"
-                "Example: Skincare, Fitness coaching, Personal branding, Real estate, Fashion, SaaS, etc."
+                "Example: Skincare, Fitness coaching, Personal branding, Real estate, Fashion, SaaS, etc.\n\n"
+                "Type /back if you want to change the previous answer."
             )
             return True
 
@@ -235,7 +234,8 @@ def handle_conversation(chat_id: str, text: str, state: dict):
             send_message(chat_id,
                 "Okay, going back.\n\n"
                 "3/5 — What is your main goal with social media right now?\n"
-                "Example: Get more clients, Grow followers, Build authority, Sell a product, Increase engagement, etc."
+                "Example: Get more clients, Grow followers, Build authority, Sell a product, Increase engagement, etc.\n\n"
+                "Type /back if you want to change the previous answer."
             )
             return True
 
@@ -244,14 +244,12 @@ def handle_conversation(chat_id: str, text: str, state: dict):
             send_message(chat_id,
                 "Okay, going back.\n\n"
                 "4/5 — What is the biggest challenge you're currently facing with content or growth?\n"
-                "Example: Low engagement, Inconsistent posting, Not converting followers, Finding content ideas, Standing out, etc."
+                "Example: Low engagement, Inconsistent posting, Not converting followers, Finding content ideas, Standing out, etc.\n\n"
+                "Type /back if you want to change the previous answer."
             )
             return True
 
-        if stage == "awaiting_brand_name":
-            send_message(chat_id, "You're already on the first question. Just answer it to continue.")
-            return True
-
+        # On question 1 or already completed
         send_message(chat_id, "There's nothing to go back to right now.")
         return True
 
