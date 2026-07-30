@@ -133,6 +133,8 @@ def profile_summary(profile: dict) -> str:
         parts.append(f"Main goal: {profile['goal']}")
     if profile.get("challenge"):
         parts.append(f"Biggest challenge: {profile['challenge']}")
+    if profile.get("personality"):
+        parts.append(f"Personality / Tone: {profile['personality']}")
     return "\n".join(parts) if parts else "Profile started but incomplete."
 
 def build_context(chat_id: str, state: dict) -> str:
@@ -143,7 +145,8 @@ def build_context(chat_id: str, state: dict) -> str:
         f"Brand name: {profile.get('brand_name', 'Not set')}\n"
         f"Niche: {profile.get('niche', 'Not set')}\n"
         f"Main goal: {profile.get('goal', 'Not set')}\n"
-        f"Biggest challenge: {profile.get('challenge', 'Not set')}"
+        f"Biggest challenge: {profile.get('challenge', 'Not set')}\n"
+        f"Personality / Tone: {profile.get('personality', 'Not set')}"
     )
 
 def is_admin(chat_id: str) -> bool:
@@ -179,7 +182,8 @@ def cmd_start(chat_id: str, text: str, state: dict, users: dict):
         send_message(chat_id,
             f"Hey {name}. I'm your senior Social Media Manager.\n\n"
             "I just need 5 quick answers so I can give you personalized advice instead of generic content.\n\n"
-            "1/5 — What is your brand or project name?"
+            "1/5 — What is your brand or project name?\n"
+            "Example: GlowSkin, FitWithAda, TechLaunch, etc."
         )
         update_profile(chat_id, state, stage="awaiting_brand_name")
         return
@@ -190,17 +194,16 @@ def cmd_start(chat_id: str, text: str, state: dict, users: dict):
         f"{get_command_list()}"
     )
 
-
 def cmd_setup(chat_id: str, state: dict):
     send_message(chat_id,
         "Let's quickly set up your brand profile (only 5 questions).\n\n"
-        "1/5 — What is your brand or project name?"
+        "1/5 — What is your brand or project name?\n"
+        "Example: GlowSkin, FitWithAda, TechLaunch, etc."
     )
     update_profile(chat_id, state, stage="awaiting_brand_name")
 
-
 def handle_conversation(chat_id: str, text: str, state: dict):
-    """Exactly 5 questions."""
+    """Exactly 5 questions with examples."""
     profile = get_profile(chat_id, state)
     stage = profile.get("stage")
 
@@ -208,7 +211,8 @@ def handle_conversation(chat_id: str, text: str, state: dict):
         update_profile(chat_id, state, brand_name=text, stage="awaiting_niche")
         send_message(chat_id,
             f"Got it — {text}.\n\n"
-            "2/5 — What niche or industry are you in?"
+            "2/5 — What niche or industry are you in?\n"
+            "Example: Skincare, Fitness coaching, Personal branding, Real estate, Fashion, SaaS, etc."
         )
         return True
 
@@ -216,7 +220,8 @@ def handle_conversation(chat_id: str, text: str, state: dict):
         update_profile(chat_id, state, niche=text, stage="awaiting_goal")
         send_message(chat_id,
             "Understood.\n\n"
-            "3/5 — What is your main goal with social media right now?"
+            "3/5 — What is your main goal with social media right now?\n"
+            "Example: Get more clients, Grow followers, Build authority, Sell a product, Increase engagement, etc."
         )
         return True
 
@@ -224,7 +229,8 @@ def handle_conversation(chat_id: str, text: str, state: dict):
         update_profile(chat_id, state, goal=text, stage="awaiting_challenge")
         send_message(chat_id,
             "Clear.\n\n"
-            "4/5 — What is the biggest challenge you're currently facing with content or growth?"
+            "4/5 — What is the biggest challenge you're currently facing with content or growth?\n"
+            "Example: Low engagement, Inconsistent posting, Not converting followers, Finding content ideas, Standing out, etc."
         )
         return True
 
@@ -233,86 +239,12 @@ def handle_conversation(chat_id: str, text: str, state: dict):
         send_message(chat_id,
             "Thanks.\n\n"
             "5/5 — How would you describe your brand's personality or tone?\n"
-            "(Examples: humorous, professional, luxurious, friendly, bold, educational, chill...)"
+            "Example: Humorous, Professional, Luxurious, Friendly, Bold, Educational, Chill, Motivational, etc."
         )
         return True
 
     if stage == "awaiting_personality":
         update_profile(chat_id, state, personality=text, stage="complete")
-        profile = get_profile(chat_id, state)
-        send_message(chat_id,
-            "Perfect. I now have everything I need.\n\n"
-            f"{profile_summary(profile)}\n\n"
-            "I can create personalized strategies and content for you from now on.\n\n"
-            "What would you like to work on first?\n"
-            "You can use /plan, /idea, /hooks, or just tell me what you need."
-        )
-        return True
-
-    return False
-
-
-def profile_summary(profile: dict) -> str:
-    if not profile:
-        return "No brand information collected yet."
-    parts = []
-    if profile.get("brand_name"):
-        parts.append(f"Brand: {profile['brand_name']}")
-    if profile.get("niche"):
-        parts.append(f"Niche: {profile['niche']}")
-    if profile.get("goal"):
-        parts.append(f"Main goal: {profile['goal']}")
-    if profile.get("challenge"):
-        parts.append(f"Biggest challenge: {profile['challenge']}")
-    if profile.get("personality"):
-        parts.append(f"Personality / Tone: {profile['personality']}")
-    return "\n".join(parts) if parts else "Profile started but incomplete."
-
-
-def build_context(chat_id: str, state: dict) -> str:
-    profile = get_profile(chat_id, state)
-    if not profile:
-        return "No brand profile available yet."
-    return (
-        f"Brand name: {profile.get('brand_name', 'Not set')}\n"
-        f"Niche: {profile.get('niche', 'Not set')}\n"
-        f"Main goal: {profile.get('goal', 'Not set')}\n"
-        f"Biggest challenge: {profile.get('challenge', 'Not set')}\n"
-        f"Personality / Tone: {profile.get('personality', 'Not set')}"
-    )
-    update_profile(chat_id, state, stage="awaiting_brand_name")
-
-def handle_conversation(chat_id: str, text: str, state: dict):
-    """Strictly 4 questions only."""
-    profile = get_profile(chat_id, state)
-    stage = profile.get("stage")
-
-    if stage == "awaiting_brand_name":
-        update_profile(chat_id, state, brand_name=text, stage="awaiting_niche")
-        send_message(chat_id,
-            f"Got it — {text}.\n\n"
-            "2/4 — What niche or industry are you in?"
-        )
-        return True
-
-    if stage == "awaiting_niche":
-        update_profile(chat_id, state, niche=text, stage="awaiting_goal")
-        send_message(chat_id,
-            "Understood.\n\n"
-            "3/4 — What is your main goal with social media right now?"
-        )
-        return True
-
-    if stage == "awaiting_goal":
-        update_profile(chat_id, state, goal=text, stage="awaiting_challenge")
-        send_message(chat_id,
-            "Clear.\n\n"
-            "4/4 — What is the biggest challenge you're currently facing with content or growth?"
-        )
-        return True
-
-    if stage == "awaiting_challenge":
-        update_profile(chat_id, state, challenge=text, stage="complete")
         profile = get_profile(chat_id, state)
         send_message(chat_id,
             "Perfect. I now have everything I need.\n\n"
